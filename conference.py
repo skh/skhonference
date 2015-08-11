@@ -33,6 +33,8 @@ from models import TeeShirtSize
 
 from settings import WEB_CLIENT_ID
 
+from utils import getUserId
+
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 
@@ -64,17 +66,20 @@ class ConferenceApi(remote.Service):
 
     def _getProfileFromUser(self):
         """Return user Profile from datastore, creating new one if non-existent."""
-        ## TODO 2
-        ## step 1: make sure user is authed
-        ## uncomment the following lines:
+        ## make sure user is authenticated
         user = endpoints.get_current_user()
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
 
-        profile = None
-        ## step 2: create a new Profile from logged in user data
-        ## you can use user.nickname() to get displayName
-        ## and user.email() to get mainEmail
+        user_id = getUserId(user)
+
+        # profile key
+        p_key = ndb.Key(Profile, user_id)
+
+        # get profile from data store, if existing
+        profile = p_key.get()
+
+        # if not, create a new Profile from logged in user data
         if not profile:
             profile = Profile(
                 userId = None,
@@ -83,7 +88,8 @@ class ConferenceApi(remote.Service):
                 mainEmail= user.email(),
                 teeShirtSize = str(TeeShirtSize.NOT_SPECIFIED),
             )
-
+            profile.put()
+            
         return profile      # return Profile
 
 
@@ -99,6 +105,7 @@ class ConferenceApi(remote.Service):
                     val = getattr(save_request, field)
                     if val:
                         setattr(prof, field, str(val))
+            prof.put()
 
         # return ProfileForm
         return self._copyProfileToForm(prof)
