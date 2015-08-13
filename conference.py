@@ -76,7 +76,7 @@ FIELDS =    {
 
 CONF_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
-    websafeConferenceKey=messes.StringField(1),
+    websafeConferenceKey=messages.StringField(1),
 )
 
 CONF_POST_REQUEST = endpoints.ResourceContainer(
@@ -243,7 +243,7 @@ class ConferenceApi(remote.Service):
 
         return request
 
-        @ndb.transactional()
+    @ndb.transactional()
     def _updateConferenceObject(self, request):
         user = endpoints.get_current_user()
         if not user:
