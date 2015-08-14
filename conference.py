@@ -145,11 +145,7 @@ class ConferenceApi(remote.Service):
                     val = getattr(save_request, field)
                     if val:
                         setattr(prof, field, str(val))
-                        #if field == 'teeShirtSize':
-                        #    setattr(prof, field, str(val).upper())
-                        #else:
-                        #    setattr(prof, field, val)
-                        prof.put()
+            prof.put()
 
         # return ProfileForm
         return self._copyProfileToForm(prof)
@@ -382,6 +378,73 @@ class ConferenceApi(remote.Service):
         )
 
     ## end conference api methods
+
+# - - - Sessions - - - - - - - - - - - - - - - - - - - - - -
+
+    ## session helpers
+    def _createSessionObject(self, request):
+        """Create Session object, returning SessionForm/request."""
+
+        # check for auth'ed and valid user
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
+        # no default values used, but at least one field must be filled
+        if not request.name:
+            raise endpoints.BadRequestException("Session 'name' field required")
+
+        # sessions belong to conferences, so: websafe conference key given?
+        if not request.websafeConferenceKey:
+            raise endpoints.BadRequestException("Field 'websafeConferenceKey' required")
+
+        # websafe conference key good?
+        c_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+        if not c_key:
+            raise endpoints.BadRequestException("websafeConferenceKey given is invalid") 
+
+        # does the conference (still) exist?
+        conf = c_key.get()
+        if not conf:
+            raise endpoints.BadRequestException("Conference with this key does not exist")
+
+        # only the conference organizer may add sessions, check
+        if user_id != conf.organizerUserId:
+            raise endpoints.UnauthorizedException('Only the conference organizer may add session')
+
+        # copy SessionForm/ProtoRPC Message into dict
+        data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+
+        # convert date from string to Date object
+        if data['date']:
+            data['date'] = datetime.strptime(data['date'][:10], "%Y-%m-%d").date()
+
+        # convert startTime from string to Date object
+        if data['startTime']: datetime.strptime(data['startTime'][:5], "%H:%M").time()
+
+        # allocate new Session ID with Conference key as parent
+        s_id = Session.allocate_ids(size=1, parent=c_key)[0]
+        # make Session key from ID
+        s_key = ndb.Key(Session, s_id, parent=c_key)
+        data['key'] = s_key
+        data['c_key'] = c_key
+
+        # create Conference & return (modified) ConferenceForm
+        Conference(**data).put()
+
+        return session
+    ## end session helpers
+
+    ## session api methods
+    # /session/{websafeConferenceKey}, POST, createSession()
+    @endpoints.method(SessionForm, SessionForm, 
+            path='session/{websafeConferenceKey}',
+            http_method='POST', name='createSession')
+    def createSession(self, request):
+        """Create new session."""
+        return self._createSessionObject(request)
+    ## end session api methods
 
 # - - - Registration - - - - - - - - - - - - - - - - - - - -
 
