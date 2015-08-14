@@ -105,8 +105,8 @@ class ConferenceQueryForms(messages.Message):
 
 # session
 
-class sessionTypes(messagesEnum):
-    """sessionTypes -- session types enumeration values"""
+class SessionType(messages.Enum):
+    """SessionType -- session types enumeration values"""
     WORKSHOP = 1
     LECTURE = 2
     BOF = 3
@@ -114,23 +114,23 @@ class sessionTypes(messagesEnum):
 
 class Session(ndb.Model):
     """Session -- Conference session object"""
-    sessionName = ndb.StringProperty()
-    highlights = ndb.StringProperty()
-    speaker = ndbStringProperty()
-    duration = ndb.IntegerProperty()
+    sessionName   = ndb.StringProperty()
+    highlights    = ndb.StringProperty()
+    speaker       = ndb.StringProperty()
+    duration      = ndb.IntegerProperty()
     typeOfSession = ndb.StringProperty(default='LECTURE')
-    date = ndb.DateProperty()
-    startTime = ndb.TimeProperty()
+    date          = ndb.DateProperty()
+    startTime     = ndb.TimeProperty()
 
 class SessionForm(messages.Message):
     """SessionForm -- Session outbound form message"""
-    sessionName = messages.StringField(1)
-    highlights = messages.StringField(2)
-    speaker = messages.StringField(3)
-    duration = messages.IntegerField(4)
-    typeOfSession = messages.EnumField('sessionType', 5)
-    date = messages.DateField(6)
-    startTime = messages.TimeField(7)
+    sessionName   = messages.StringField(1)
+    highlights    = messages.StringField(2)
+    speaker       = messages.StringField(3)
+    duration      = messages.IntegerField(4)
+    typeOfSession = messages.EnumField('SessionType', 5)
+    date          = messages.StringField(6)
+    startTime     = messages.StringField(7)
 
 # needed for conference registration
 class BooleanMessage(messages.Message):
