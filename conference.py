@@ -38,12 +38,14 @@ from models import ConferenceQueryForm
 from models import ConferenceQueryForms
 from models import Session
 from models import SessionForm
+from models import SessionMiniForm
 from models import SessionForms
 from models import SessionQueryByTypeForm
 from models import SessionQueryBySpeakerForm
 from models import SessionType
 from models import Speaker
 from models import SpeakerForm
+from models import SpeakerForms
 from models import SpeakerMiniForm
 
 
@@ -99,7 +101,7 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
 )
 
 SESSION_POST_REQUEST = endpoints.ResourceContainer(
-    SessionForm,
+    SessionMiniForm,
     websafeConferenceKey=messages.StringField(1)
 )
 
@@ -523,6 +525,18 @@ class ConferenceApi(remote.Service):
                 raise endpoints.BadRequestException("websafeSpeakerKey given is invalid")
             else:
                 data['speaker'] = sp_key
+        elif request.speakerName:
+            # is there exactly one speaker of this name?
+            speakers = Speaker.query()
+            speakers = speakers.filter(Speaker.name == request.speakerName)
+            if speakers.count() == 0:
+                raise endpoints.BadRequestException(
+                    "No such speaker: %s" % request.speakerName)
+            elif speakers.count() > 1:
+                raise endpoints.BadRequestException(
+                    "Speaker name ambiguous: %s" % request.speakerName)
+            else:
+                data['speaker'] = speakers.get().key
 
         # remove unnecessary data copied over from request
         del data['websafeConferenceKey']
@@ -688,6 +702,16 @@ class ConferenceApi(remote.Service):
         """Create new speaker"""
         return self._createSpeakerObject(request)
 
+    # /speakers, GET, getSpeakers()
+    @endpoints.method(message_types.VoidMessage, SpeakerForms,
+            path='speakers',
+            http_method='GET', name='getSpeakers')
+    def getSpeakers(self, request):
+        """Return all speakers"""
+        speakers = Speaker.query()
+        return SpeakerForms(
+            items=[self._copySpeakerToForm(speaker) for speaker in speakers]
+        )
     ## end speaker api methods
 
 # - - - Registration - - - - - - - - - - - - - - - - - - - -

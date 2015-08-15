@@ -124,7 +124,7 @@ class SpeakerMiniForm(messages.Message):
 
 class SpeakerForms(messages.Message):
     items = messages.MessageField(SpeakerForm, 1, repeated=True)
-    
+
 # - - - Sessions - - - - - - - - - - - - - - - - - - -
 
 class SessionType(messages.Enum):
@@ -146,7 +146,7 @@ class Session(ndb.Model):
     startTime     = ndb.TimeProperty()
 
 class SessionForm(messages.Message):
-    """SessionForm -- Session inbound/outbound form message"""
+    """SessionForm -- Session outbound form message"""
     sessionName    = messages.StringField(1)
     highlights     = messages.StringField(2)
     speakerName    = messages.StringField(3)
@@ -156,6 +156,17 @@ class SessionForm(messages.Message):
     startTime      = messages.StringField(7)
     conferenceName = messages.StringField(8)
     websafeSpeakerKey = messages.StringField(9)
+
+class SessionMiniForm(messages.Message):
+    """SessionForm -- Session inbound form message"""
+    sessionName    = messages.StringField(1)
+    highlights     = messages.StringField(2)
+    speakerName    = messages.StringField(3)
+    duration       = messages.IntegerField(4)
+    typeOfSession  = messages.EnumField('SessionType', 5)
+    date           = messages.StringField(6)
+    startTime      = messages.StringField(7)
+    websafeSpeakerKey = messages.StringField(8)
 
 class SessionQueryBySpeakerForm(messages.Message):
     """SessionQueryBySpeakerForm -- Session query inbound form"""
