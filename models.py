@@ -132,6 +132,15 @@ class SessionForm(messages.Message):
     date          = messages.StringField(6)
     startTime     = messages.StringField(7)
 
+class SessionQueryForm(messages.Message):
+    """SessionQueryForm -- Form to query for sessions"""
+    typeOfSession = messages.EnumField('SessionType', 1)
+
+
+class SessionForms(messages.Message):
+    """SessionForms -- multiple Session outbound form message"""
+    items = messages.MessageField(SessionForm, 1, repeated=True)
+
 # needed for conference registration
 class BooleanMessage(messages.Message):
     """BooleanMessage-- outbound Boolean value message"""

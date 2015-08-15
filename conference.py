@@ -38,6 +38,8 @@ from models import ConferenceQueryForm
 from models import ConferenceQueryForms
 from models import Session
 from models import SessionForm
+from models import SessionForms
+from models import SessionQueryForm
 from models import SessionType
 
 
@@ -90,6 +92,11 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
 
 SESSION_POST_REQUEST = endpoints.ResourceContainer(
     SessionForm,
+    websafeConferenceKey=messages.StringField(1)
+)
+
+SESSION_QUERY_REQUEST = endpoints.ResourceContainer(
+    SessionQueryForm,
     websafeConferenceKey=messages.StringField(1)
 )
 
@@ -290,6 +297,25 @@ class ConferenceApi(remote.Service):
         conf.put()
         prof = ndb.Key(Profile, user_id).get()
         return self._copyConferenceToForm(conf, getattr(prof, 'displayName'))
+
+    def _getConferenceQuery(self, request):
+        """Return formatted query from the submitted filters."""
+        q = Conference.query()
+        inequality_filter, filters = self._formatFilters(request.filters)
+
+        # If exists, sort on inequality filter first
+        if not inequality_filter:
+            q = q.order(Conference.name)
+        else:
+            q = q.order(ndb.GenericProperty(inequality_filter))
+            q = q.order(Conference.name)
+
+        for filtr in filters:
+            if filtr["field"] in ["month", "maxAttendees"]:
+                filtr["value"] = int(filtr["value"])
+            formatted_query = ndb.query.FilterNode(filtr["field"], filtr["operator"], filtr["value"])
+            q = q.filter(formatted_query)
+        return q
     ## end conference helpers
 
     ## conference api methods
@@ -334,7 +360,7 @@ class ConferenceApi(remote.Service):
             name='queryConferences')
     def queryConferences(self, request):
         """Query for conferences."""
-        conferences = self._getQuery(request)
+        conferences = self._getConferenceQuery(request)
 
          # return individual ConferenceForm object per Conference
         return ConferenceForms(
@@ -463,6 +489,25 @@ class ConferenceApi(remote.Service):
         session.put()
 
         return self._copySessionToForm(session)
+
+    def _getSessionQuery(self, request):
+        """Return formatted query from the submitted filters."""
+        q = Session.query()
+        inequality_filter, filters = self._formatFilters(request.filters)
+
+        # If exists, sort on inequality filter first
+        if not inequality_filter:
+            q = q.order(Session.sessionName)
+        else:
+            q = q.order(ndb.GenericProperty(inequality_filter))
+            q = q.order(Session.sessionName)
+
+        for filtr in filters:
+            if filtr["field"] in ["duration"]:
+                filtr["value"] = int(filtr["value"])
+            formatted_query = ndb.query.FilterNode(filtr["field"], filtr["operator"], filtr["value"])
+            q = q.filter(formatted_query)
+        return q
     ## end session helpers
 
     ## session api methods
@@ -473,6 +518,43 @@ class ConferenceApi(remote.Service):
     def createSession(self, request):
         """Create new session."""
         return self._createSessionObject(request)
+
+    # /sessions/{websafeConferenceKey}, GET, getConferenceSessions()
+    @endpoints.method(SESSION_QUERY_REQUEST, SessionForms,
+            path='sessions/{websafeConferenceKey}',
+            http_method='GET', name='getConferenceSessions')
+    def getConferenceSessions(self, request):
+        """Return sessions in given conference."""
+        # make sure user is authed
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
+        # sessions belong to conferences, so: websafe conference key given?
+        if not request.websafeConferenceKey:
+            raise endpoints.BadRequestException("Field 'websafeConferenceKey' required")
+
+        # websafe conference key good?
+        try:
+            c_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+        except Exception:
+            raise endpoints.BadRequestException("websafeConferenceKey given is corrupted")
+        if not c_key:
+            raise endpoints.BadRequestException("websafeConferenceKey given is invalid") 
+
+        # does the conference (still) exist?
+        conf = c_key.get()
+        if not conf:
+            raise endpoints.BadRequestException("Conference with this key does not exist")
+
+
+        # create ancestor query for all key matches for this user
+        sessions = Session.query(ancestor=c_key)
+        # return set of SessionForm objects per Conference
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
     ## end session api methods
 
 # - - - Registration - - - - - - - - - - - - - - - - - - - -
@@ -548,24 +630,7 @@ class ConferenceApi(remote.Service):
 # - - - Search & filtering - - - - - - - - - - - - - - - - -
 
     ## search & filtering helpers
-    def _getQuery(self, request):
-        """Return formatted query from the submitted filters."""
-        q = Conference.query()
-        inequality_filter, filters = self._formatFilters(request.filters)
 
-        # If exists, sort on inequality filter first
-        if not inequality_filter:
-            q = q.order(Conference.name)
-        else:
-            q = q.order(ndb.GenericProperty(inequality_filter))
-            q = q.order(Conference.name)
-
-        for filtr in filters:
-            if filtr["field"] in ["month", "maxAttendees"]:
-                filtr["value"] = int(filtr["value"])
-            formatted_query = ndb.query.FilterNode(filtr["field"], filtr["operator"], filtr["value"])
-            q = q.filter(formatted_query)
-        return q
 
     def _formatFilters(self, filters):
         """Parse, check validity and format user supplied filters."""
