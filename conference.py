@@ -448,6 +448,12 @@ class ConferenceApi(remote.Service):
                     setattr(sf, field.name, getattr(session, field.name))
         conf = session.key.parent().get()
         setattr(sf, 'conferenceName', getattr(conf, 'name'))
+        if hasattr(session, 'speaker'):
+            sp_key = getattr(session, 'speaker')
+            speaker = sp_key.get()
+            setattr(sf, 'speakerName', getattr(speaker, 'name'))
+            setattr(sf, 'websafeSpeakerKey', speaker.key.urlsafe())
+
         sf.check_initialized()
         return sf
 
@@ -505,8 +511,24 @@ class ConferenceApi(remote.Service):
             if data[df] in (None, []):
                 data[df] = SESSION_DEFAULTS[df]
 
+
+        # sessions may have speakers, if it is given, check for validity:
+        if request.websafeSpeakerKey:
+            # speaker key good?
+            try:
+                sp_key = ndb.Key(urlsafe=request.websafeSpeakerKey)
+            except Exception:
+                raise endpoints.BadRequestException("websafeSpeakerKey given is corrupted")
+            if not sp_key:
+                raise endpoints.BadRequestException("websafeSpeakerKey given is invalid")
+            else:
+                data['speaker'] = sp_key
+
         # remove unnecessary data copied over from request
         del data['websafeConferenceKey']
+        del data['conferenceName']
+        del data['websafeSpeakerKey']
+        del data['speakerName']
 
         # allocate new Session ID with Conference key as parent
         s_id = Session.allocate_ids(size=1, parent=c_key)[0]
@@ -574,13 +596,10 @@ class ConferenceApi(remote.Service):
         if not c_key:
             raise endpoints.BadRequestException("websafeConferenceKey given is invalid") 
 
-
-
         # does the conference (still) exist?
         conf = c_key.get()
         if not conf:
             raise endpoints.BadRequestException("Conference with this key does not exist")
-
 
         # create ancestor query for all key matches for this user
         sessions = Session.query(ancestor=c_key)
