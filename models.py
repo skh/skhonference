@@ -17,6 +17,7 @@ import endpoints
 from protorpc import messages
 from google.appengine.ext import ndb
 
+# - - - Profiles - - - - - - - - - - - - - - - - - - -
 
 class Profile(ndb.Model):
     """Profile -- User profile object"""
@@ -58,6 +59,8 @@ class TeeShirtSize(messages.Enum):
     XXL_W = 13
     XXXL_M = 14
     XXXL_W = 15
+
+# - - - Conferences  - - - - - - - - - - - - - - - - -
 
 class Conference(ndb.Model):
     """Conference -- Conference object"""
@@ -101,7 +104,28 @@ class ConferenceQueryForms(messages.Message):
     """ConferenceQueryForms -- multiple ConferenceQueryForm inbound form message"""
     filters = messages.MessageField(ConferenceQueryForm, 1, repeated=True)
 
-# session
+# - - - Speakers - - - - - - - - - - - - - - - - - - -
+
+class Speaker(ndb.Model):
+    """Speaker -- Session speaker object"""
+    name = ndb.StringProperty()
+    bio  = ndb.TextProperty()
+
+class SpeakerForm(messages.Message):
+    """SpeakerForm -- Speaker outbound form message"""
+    name = messages.StringField(1)
+    bio  = messages.StringField(2)
+    websafeKey = messages.StringField(3)
+
+class SpeakerMiniForm(messages.Message):
+    """SpeakerMiniForm -- update Speaker inbound form message"""
+    name = messages.StringField(1)
+    bio  = messages.StringField(2)
+
+class SpeakerForms(messages.Message):
+    items = messages.MessageField(SpeakerForm, 1, repeated=True)
+    
+# - - - Sessions - - - - - - - - - - - - - - - - - - -
 
 class SessionType(messages.Enum):
     """SessionType -- session types enumeration values"""
@@ -115,22 +139,23 @@ class Session(ndb.Model):
     """Session -- Conference session object"""
     sessionName   = ndb.StringProperty()
     highlights    = ndb.StringProperty()
-    speaker       = ndb.StringProperty()
+    speaker       = ndb.KeyProperty(kind=Speaker)
     duration      = ndb.IntegerProperty()
     typeOfSession = ndb.StringProperty(default='LECTURE')
     date          = ndb.DateProperty()
     startTime     = ndb.TimeProperty()
 
 class SessionForm(messages.Message):
-    """SessionForm -- Session outbound form message"""
+    """SessionForm -- Session inbound/outbound form message"""
     sessionName    = messages.StringField(1)
     highlights     = messages.StringField(2)
-    speaker        = messages.StringField(3)
+    speakerName    = messages.StringField(3)
     duration       = messages.IntegerField(4)
     typeOfSession  = messages.EnumField('SessionType', 5)
     date           = messages.StringField(6)
     startTime      = messages.StringField(7)
     conferenceName = messages.StringField(8)
+    websafeSpeakerKey = messages.StringField(9)
 
 class SessionQueryBySpeakerForm(messages.Message):
     """SessionQueryBySpeakerForm -- Session query inbound form"""
@@ -139,7 +164,6 @@ class SessionQueryBySpeakerForm(messages.Message):
 class SessionQueryByTypeForm(messages.Message):
     """SessionQueryByTypeForm -- Session query inbound form"""
     typeOfSession = messages.EnumField('SessionType', 1)
-
 
 class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""

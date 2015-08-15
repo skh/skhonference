@@ -42,6 +42,9 @@ from models import SessionForms
 from models import SessionQueryByTypeForm
 from models import SessionQueryBySpeakerForm
 from models import SessionType
+from models import Speaker
+from models import SpeakerForm
+from models import SpeakerMiniForm
 
 
 from settings import WEB_CLIENT_ID
@@ -511,7 +514,7 @@ class ConferenceApi(remote.Service):
         s_key = ndb.Key(Session, s_id, parent=c_key)
         data['key'] = s_key
 
-        # create Conference & return (modified) ConferenceForm
+        # create Session & return (modified) SessionForm
         session = Session(**data)
         session.put()
 
@@ -612,6 +615,61 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session) for session in sessions]
         )
     ## end session api methods
+
+# - - - Speakers - - - - - - - - - - - - - - - - - - - - - -
+
+    ## speaker helper methods
+    def _copySpeakerToForm(self, speaker):
+        """Copy relevant fields from Speaker to SpeakerForm."""
+        sf = SpeakerForm()
+        for field in sf.all_fields():
+            if hasattr(speaker, field.name):
+                setattr(sf, field.name, getattr(speaker, field.name))
+            elif field.name == "websafeKey":
+                setattr(sf, field.name, speaker.key.urlsafe())
+        sf.check_initialized()
+        return sf
+
+    def _createSpeakerObject(self, request):
+        """Create Speaker object, returning SpeakerForm."""
+
+        # check for auth'ed and valid user
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
+        # Speaker name must be filled
+        if not request.name:
+            raise endpoints.BadRequestException("Field 'name' required")
+
+        # copy SpeakerForm/ProtoRPC Message into dict
+        data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+
+        # allocate new Speaker ID
+        s_id = Speaker.allocate_ids(size=1)[0]
+        # make Speaker key from ID
+        s_key = ndb.Key(Speaker, s_id)
+        data['key'] = s_key
+
+        # create Speaker & return SpeakerForm
+        speaker = Speaker(**data)
+        speaker.put()
+
+        return self._copySpeakerToForm(speaker)
+
+    ## end speaker helper methods
+
+    ## speaker api methods
+    # /speaker, POST, createSpeaker()
+    @endpoints.method(SpeakerMiniForm, SpeakerForm, 
+            path='speaker',
+            http_method='POST', name='createSpeaker')
+    def createSpeaker(self, request):
+        """Create new speaker"""
+        return self._createSpeakerObject(request)
+
+    ## end speaker api methods
 
 # - - - Registration - - - - - - - - - - - - - - - - - - - -
 
