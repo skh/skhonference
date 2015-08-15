@@ -521,6 +521,7 @@ class ConferenceApi(remote.Service):
             formatted_query = ndb.query.FilterNode(filtr["field"], filtr["operator"], filtr["value"])
             q = q.filter(formatted_query)
         return q
+
     ## end session helpers
 
     ## session api methods
@@ -537,7 +538,7 @@ class ConferenceApi(remote.Service):
             path='sessions/{websafeConferenceKey}',
             http_method='GET', name='getConferenceSessions')
     def getConferenceSessions(self, request):
-        """Return sessions in given conference."""
+        """Return all sessions in a given conference."""
         # make sure user is authed
         user = endpoints.get_current_user()
         if not user:
@@ -556,6 +557,8 @@ class ConferenceApi(remote.Service):
         if not c_key:
             raise endpoints.BadRequestException("websafeConferenceKey given is invalid") 
 
+
+
         # does the conference (still) exist?
         conf = c_key.get()
         if not conf:
@@ -565,6 +568,20 @@ class ConferenceApi(remote.Service):
         # create ancestor query for all key matches for this user
         sessions = Session.query(ancestor=c_key)
         # return set of SessionForm objects per Conference
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+
+    # /sessions/{websafeConferenceKey}, POST, getConferenceSessionsByType()
+    @endpoints.method(SESSION_QUERY_BY_TYPE_REQUEST, SessionForms,
+            path='sessions/{websafeConferenceKey}',
+            http_method='POST', name='getConferenceSessionsByType')
+    def getConferenceSessionsByType(self, request):
+        """Return all sessions of the specified type in a given conference"""
+        sessions = Session.query(ancestor=ndb.Key(urlsafe=request.websafeConferenceKey))
+        #typeOfSession = getattr(SessionType, getattr(request, 'typeOfSession'))
+        sessions = sessions.filter(Session.typeOfSession == str(getattr(request, 'typeOfSession')))
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
