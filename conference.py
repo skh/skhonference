@@ -39,7 +39,7 @@ from models import ConferenceQueryForms
 from models import Session
 from models import SessionForm
 from models import SessionForms
-from models import SessionQueryForm
+from models import SessionQueryByTypeForm
 from models import SessionType
 
 
@@ -96,7 +96,12 @@ SESSION_POST_REQUEST = endpoints.ResourceContainer(
 )
 
 SESSION_QUERY_REQUEST = endpoints.ResourceContainer(
-    SessionQueryForm,
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1)
+)
+
+SESSION_QUERY_BY_TYPE_REQUEST = endpoints.ResourceContainer(
+    SessionQueryByTypeForm,
     websafeConferenceKey=messages.StringField(1)
 )
 
@@ -422,9 +427,13 @@ class ConferenceApi(remote.Service):
         sf = SessionForm()
         for field in sf.all_fields():
             if hasattr(session, field.name):
-                # convert Date to date string and Time to time string; just copy others
+                # convert Date to date string and Time to time string
                 if field.name.endswith('date') or field.name.endswith('Time'):
-                    setattr(sf, field.name, str(getattr(session, field.name)))                    
+                    setattr(sf, field.name, str(getattr(session, field.name)))
+                # convert t-shirt string to Enum; 
+                elif field.name == 'typeOfSession':
+                    setattr(sf, field.name, getattr(SessionType, getattr(session, field.name)))               
+                # just copy others                   
                 else:
                     setattr(sf, field.name, getattr(session, field.name))
         sf.check_initialized()
@@ -474,6 +483,10 @@ class ConferenceApi(remote.Service):
         # convert startTime from string to Date object
         if data['startTime']: 
             data['startTime'] = datetime.strptime(data['startTime'][:5], "%H:%M").time()
+
+        # convert sessionType to string
+        if data['typeOfSession']:
+            data['typeOfSession'] = str(data['typeOfSession'])
 
         # remove unnecessary data copied over from request
         del data['websafeConferenceKey']

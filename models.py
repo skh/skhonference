@@ -132,8 +132,12 @@ class SessionForm(messages.Message):
     date          = messages.StringField(6)
     startTime     = messages.StringField(7)
 
-class SessionQueryForm(messages.Message):
-    """SessionQueryForm -- Form to query for sessions"""
+class SessionQueryBySpeakerForm(messages.Message):
+    """SessionQueryBySpeakerForm -- Session query inbound form"""
+    speaker = messages.StringField(1)
+
+class SessionQueryByTypeForm(messages.Message):
+    """SessionQueryByTypeForm -- Session query inbound form"""
     typeOfSession = messages.EnumField('SessionType', 1)
 
 
