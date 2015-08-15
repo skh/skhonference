@@ -111,6 +111,7 @@ class SessionType(messages.Enum):
     LECTURE = 2
     BOF = 3
     TUTORIAL = 4
+    UNSPECIFIED = 5
 
 class Session(ndb.Model):
     """Session -- Conference session object"""

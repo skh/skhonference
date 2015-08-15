@@ -40,6 +40,7 @@ from models import Session
 from models import SessionForm
 from models import SessionForms
 from models import SessionQueryByTypeForm
+from models import SessionQueryBySpeakerForm
 from models import SessionType
 
 
@@ -57,11 +58,15 @@ ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-DEFAULTS = {
+CONF_DEFAULTS = {
     "city": "Default City",
     "maxAttendees": 0,
     "seatsAvailable": 0,
     "topics": [ "Default", "Topic" ],
+}
+
+SESSION_DEFAULTS = {
+    "typeOfSession": "UNSPECIFIED"
 }
 
 OPERATORS = {
@@ -73,7 +78,7 @@ OPERATORS = {
             'NE':   '!='
             }
 
-FIELDS =    {
+CONF_FIELDS =    {
             'CITY': 'city',
             'TOPIC': 'topics',
             'MONTH': 'month',
@@ -226,10 +231,10 @@ class ConferenceApi(remote.Service):
         del data['organizerDisplayName']
 
         # add default values for those missing (both data model & outbound Message)
-        for df in DEFAULTS:
+        for df in CONF_DEFAULTS:
             if data[df] in (None, []):
-                data[df] = DEFAULTS[df]
-                setattr(request, df, DEFAULTS[df])
+                data[df] = CONF_DEFAULTS[df]
+                setattr(request, df, CONF_DEFAULTS[df])
 
         # convert dates from strings to Date objects; set month based on start_date
         if data['startDate']:
@@ -430,8 +435,10 @@ class ConferenceApi(remote.Service):
                 # convert Date to date string and Time to time string
                 if field.name.endswith('date') or field.name.endswith('Time'):
                     setattr(sf, field.name, str(getattr(session, field.name)))
-                # convert t-shirt string to Enum; 
+                # convert session typeOfSession string to Enum; 
                 elif field.name == 'typeOfSession':
+                    print getattr(session, field.name)
+                    #setattr(sf, field.name, getattr(session, field.name))
                     setattr(sf, field.name, getattr(SessionType, getattr(session, field.name)))               
                 # just copy others                   
                 else:
@@ -487,6 +494,11 @@ class ConferenceApi(remote.Service):
         # convert sessionType to string
         if data['typeOfSession']:
             data['typeOfSession'] = str(data['typeOfSession'])
+
+        # add default values for those missing (both data model & outbound Message)
+        for df in SESSION_DEFAULTS:
+            if data[df] in (None, []):
+                data[df] = SESSION_DEFAULTS[df]
 
         # remove unnecessary data copied over from request
         del data['websafeConferenceKey']
@@ -573,7 +585,7 @@ class ConferenceApi(remote.Service):
         )
 
 
-    # /sessions/{websafeConferenceKey}, POST, getConferenceSessionsByType()
+    # /sessions_by_type/{websafeConferenceKey}, POST, getConferenceSessionsByType()
     @endpoints.method(SESSION_QUERY_BY_TYPE_REQUEST, SessionForms,
             path='sessions/{websafeConferenceKey}',
             http_method='POST', name='getConferenceSessionsByType')
@@ -582,6 +594,18 @@ class ConferenceApi(remote.Service):
         sessions = Session.query(ancestor=ndb.Key(urlsafe=request.websafeConferenceKey))
         #typeOfSession = getattr(SessionType, getattr(request, 'typeOfSession'))
         sessions = sessions.filter(Session.typeOfSession == str(getattr(request, 'typeOfSession')))
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+    # /sessions_by_speaker, POST, getConferenceSessionsByType()
+    @endpoints.method(SessionQueryBySpeakerForm, SessionForms,
+            path='sessions_by_speaker',
+            http_method='POST', name='getConferenceSessionsBySpeaker')
+    def getConferenceSessionsBySpeaker(self, request):
+        """Return all sessions by the specified speaker in all conferences"""
+        sessions = Session.query()
+        sessions = sessions.filter(Session.speaker == getattr(request, 'speaker'))
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -671,7 +695,7 @@ class ConferenceApi(remote.Service):
             filtr = {field.name: getattr(f, field.name) for field in f.all_fields()}
 
             try:
-                filtr["field"] = FIELDS[filtr["field"]]
+                filtr["field"] = CONF_FIELDS[filtr["field"]]
                 filtr["operator"] = OPERATORS[filtr["operator"]]
             except KeyError:
                 raise endpoints.BadRequestException("Filter contains invalid field or operator.")
