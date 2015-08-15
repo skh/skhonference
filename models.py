@@ -71,7 +71,6 @@ class Conference(ndb.Model):
     endDate         = ndb.DateProperty()
     maxAttendees    = ndb.IntegerProperty()
     seatsAvailable  = ndb.IntegerProperty()
-    sessionKeys     = ndb.StringProperty(repeated=True)
 
 class ConferenceForm(messages.Message):
     """ConferenceForm -- Conference outbound form message"""
@@ -87,7 +86,6 @@ class ConferenceForm(messages.Message):
     endDate         = messages.StringField(10)
     websafeKey      = messages.StringField(11)
     organizerDisplayName = messages.StringField(12)
-    sessionKeys     = messages.StringField(13, repeated=True)
 
 class ConferenceForms(messages.Message):
     """ConferenceForms -- multiple Conference outbound form message"""
@@ -125,13 +123,14 @@ class Session(ndb.Model):
 
 class SessionForm(messages.Message):
     """SessionForm -- Session outbound form message"""
-    sessionName   = messages.StringField(1)
-    highlights    = messages.StringField(2)
-    speaker       = messages.StringField(3)
-    duration      = messages.IntegerField(4)
-    typeOfSession = messages.EnumField('SessionType', 5)
-    date          = messages.StringField(6)
-    startTime     = messages.StringField(7)
+    sessionName    = messages.StringField(1)
+    highlights     = messages.StringField(2)
+    speaker        = messages.StringField(3)
+    duration       = messages.IntegerField(4)
+    typeOfSession  = messages.EnumField('SessionType', 5)
+    date           = messages.StringField(6)
+    startTime      = messages.StringField(7)
+    conferenceName = messages.StringField(8)
 
 class SessionQueryBySpeakerForm(messages.Message):
     """SessionQueryBySpeakerForm -- Session query inbound form"""

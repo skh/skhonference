@@ -443,6 +443,8 @@ class ConferenceApi(remote.Service):
                 # just copy others                   
                 else:
                     setattr(sf, field.name, getattr(session, field.name))
+        conf = session.key.parent().get()
+        setattr(sf, 'conferenceName', getattr(conf, 'name'))
         sf.check_initialized()
         return sf
 
