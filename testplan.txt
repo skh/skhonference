@@ -1,0 +1,36 @@
+MANUAL TESTPLAN for skhonference
+
+- create 3 conference
+- list conferences, copy out two websafe keys
+
+- create 3 speakers, 2 of them with the same name, copy out one websafe key
+
+- add session to conference with speaker by name
+- add session to conference with speaker by ambiguous name (error)
+- add session to conference with nonexisting speaker name (error)
+- add session to conference with nonexisting speaker key (error)
+- add session to conference with corrupt conference key
+- add session to conference with speaker by key
+
+- add session to other conference
+- list sessions by conference
+- list sessions by speaker
+
+- add sessions of types TUTORIAL, WORKSHOP, and LECTURE
+
+- list sessions by conference and type
+
+- create conference with max attendance set
+- register for conference
+- list conferences, observe seats available
+- unregister from conference
+- list conferences, observe seats available
+
+- list sessions by speaker, note websafe keys
+- add session to wishlist
+- show wishlist
+- remove session from wishlist
+- show wishlist
+- add/remove session to wishlist with corrupt key (error)
+- add session to wishlist twice (error)
+- remove session from wishlist twice (error) 
