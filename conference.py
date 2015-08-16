@@ -42,6 +42,7 @@ from models import SessionMiniForm
 from models import SessionForms
 from models import SessionQueryByTypeForm
 from models import SessionQueryBySpeakerForm
+from models import SessionQueryAfterExcludingForm
 from models import SessionType
 from models import Speaker
 from models import SpeakerForm
@@ -123,6 +124,12 @@ CONF_WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeConferenceKey=messages.StringField(1)
 )
+
+SESSIONS_AFTER_EXCLUDING_POST_REQUEST = endpoints.ResourceContainer (
+    SessionQueryAfterExcludingForm,
+    websafeConferenceKey=messages.StringField(1)
+)
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 @endpoints.api( name='conference', version='v1', audiences=[ANDROID_AUDIENCE],
@@ -467,9 +474,10 @@ class ConferenceApi(remote.Service):
         # if the session has a speaker assigned, show their name and websafe key
         if hasattr(session, 'speaker'):
             sp_key = getattr(session, 'speaker')
-            speaker = sp_key.get()
-            setattr(sf, 'speakerName', getattr(speaker, 'name'))
-            setattr(sf, 'websafeSpeakerKey', speaker.key.urlsafe())
+            if sp_key:
+                speaker = sp_key.get()
+                setattr(sf, 'speakerName', getattr(speaker, 'name'))
+                setattr(sf, 'websafeSpeakerKey', speaker.key.urlsafe())
 
         sf.check_initialized()
         return sf
@@ -555,7 +563,8 @@ class ConferenceApi(remote.Service):
 
         # remove unnecessary data copied over from request
         del data['websafeConferenceKey']
-        del data['conferenceName']
+        if hasattr(data, 'conferenceName'):
+            del data['conferenceName']
         del data['websafeSpeakerKey']
         del data['speakerName']
 
@@ -967,6 +976,34 @@ class ConferenceApi(remote.Service):
     def getAnnouncement(self, request):
         """Return Announcement from memcache."""
         return StringMessage(data=memcache.get(MEMCACHE_ANNOUNCEMENTS_KEY) or "")
+
+# - - - Query showcase - - - - - - - - - - - - - - - - - - -
+
+    # /sessionquery/{websafeConferenceKey}, POST, getSessionsAfterExcluding()
+    @endpoints.method(SESSIONS_AFTER_EXCLUDING_POST_REQUEST, SessionForms,
+        path='sessionquery/{websafeConferenceKey}',
+        http_method='POST', name='getSessionsAfterExcluding')
+    def getSessionsAfterExcluding(self, request):
+
+        # make time from string
+        earliestTime = datetime.strptime(request.earliestTime[:5], "%H:%M").time()
+
+        # query 1: all sessions in conference after earliestTime
+        sessions = Session.query()
+        rightTimeSessions = sessions.filter(Session.startTime >= earliestTime)
+
+        # query 2: all sessions in conference not of type typeOfSession
+        rightTypeSessions = sessions.filter(
+            Session.typeOfSession != str(request.typeOfSession))
+        filter_keys = [rts.key for rts in rightTypeSessions]
+
+        # filter query 1 by query 2
+        sessions = rightTimeSessions.filter(Session.key.IN(filter_keys))
+
+        # return set of SessionForm objects
+        return SessionForms(items=[self._copySessionToForm(session) \
+            for session in sessions]
+        )
 
 
 # - - - API registration - - - - - - - - - - - - - - - - - -
