@@ -48,6 +48,8 @@ from models import Speaker
 from models import SpeakerForm
 from models import SpeakerForms
 from models import SpeakerMiniForm
+from models import TopicForm
+from models import TopicForms
 
 
 from settings import WEB_CLIENT_ID
@@ -979,6 +981,47 @@ class ConferenceApi(remote.Service):
 
 # - - - Query showcase - - - - - - - - - - - - - - - - - - -
 
+    ## task 3.2.1: list all topics covered by the conferences in the system
+    # /topics, 'GET', getTopics()
+    @endpoints.method(message_types.VoidMessage, TopicForms,
+        path='topics', http_method='GET', name='getTopics')
+    def getTopics(self, request):
+        topics = set()
+        confs = Conference.query()
+        for conf in confs:
+            if hasattr(conf, 'topics'):
+                for conftopic in getattr(conf, 'topics'):
+                    topics.add(conftopic) # the set takes care of not adding duplicates
+
+        return TopicForms(items=[TopicForm(topic=topic) for topic in topics])
+
+    ## task 3.2.2: list all conferences covering a given topic
+    # /conferencesbytopic, 'POST', getConferencesByTopic()
+    @endpoints.method(TopicForm, ConferenceForms,
+        path='/conferencesbytopic',
+        http_method='POST', name='getConferencesByTopic')
+    def getConferencesByTopic(self, request):
+        confs = Conference.query()
+        confs = confs.filter(Conference.topics == request.topic)
+
+        # get organizers
+        organisers = [ndb.Key(Profile, conf.organizerUserId) for conf in confs]
+        profiles = ndb.get_multi(organisers)
+
+        # put display names in a dict for easier fetching
+        names = {}
+        for profile in profiles:
+            names[profile.key.id()] = profile.displayName
+
+        # return set of ConferenceForm objects per Conference
+        return ConferenceForms(items=[self._copyConferenceToForm(
+            conf, names[conf.organizerUserId])\
+         for conf in confs]
+        )
+
+
+    ## task 3.3: list all sessions NOT matching the given type scheduled after
+    ## the given time
     # /sessionquery/{websafeConferenceKey}, POST, getSessionsAfterExcluding()
     @endpoints.method(SESSIONS_AFTER_EXCLUDING_POST_REQUEST, SessionForms,
         path='sessionquery/{websafeConferenceKey}',

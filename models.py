@@ -188,6 +188,15 @@ class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""
     items = messages.MessageField(SessionForm, 1, repeated=True)
 
+# needed for topic-related search
+class TopicForm(messages.Message):
+    """TopicForm -- Topic query inbound / outbound form"""
+    topic = messages.StringField(1)
+
+class TopicForms(messages.Message):
+    """TopicForms -- multiple Topic outbound form message"""
+    items = messages.MessageField(TopicForm, 1, repeated=True)
+
 # needed for conference registration
 class BooleanMessage(messages.Message):
     """BooleanMessage-- outbound Boolean value message"""

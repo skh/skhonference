@@ -36,3 +36,16 @@ MANUAL TESTPLAN for skhonference
 - remove session from wishlist twice (error) 
 
 - show wishlist sessions in conference
+
+- create workshop before 19:00:00
+- create workshop after 19:00:00
+- create lecture before 19:00:00
+- create lecture after 19:00:00
+
+- test getSessionsAfterExcluding()
+
+- make up two topics (e.g. 'Python' and 'Google App Engine')
+- create two conferences with topic 1, and one with topic 2
+
+- test getTopics(), should list two topics
+- test getConferencesByTopic()
