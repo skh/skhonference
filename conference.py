@@ -62,8 +62,10 @@ from utils import getUserId
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
+MEMCACHE_FEATURED_SPEAKER_KEY = "RECENT FEATURED SPEAKER"
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
+FEATURED_SPEAKER_TPL = ('Featured speaker in %s: %s with the sessions: %s')
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 CONF_DEFAULTS = {
@@ -130,6 +132,12 @@ CONF_WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
 SESSIONS_AFTER_EXCLUDING_POST_REQUEST = endpoints.ResourceContainer (
     SessionQueryAfterExcludingForm,
     websafeConferenceKey=messages.StringField(1)
+)
+
+FEATURED_SPEAKER_GET_REQUEST = endpoints.ResourceContainer (
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    websafeSpeakerKey=messages.StringField(2)
 )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -379,7 +387,6 @@ class ConferenceApi(remote.Service):
                 'No conference found with key: %s' % request.websafeConferenceKey)
         prof = conf.key.parent().get()
         if not prof:
-            print conf
             raise endpoints.NotFoundException(
                 'Conference does not have an ancestor.')
         # return ConferenceForm
@@ -459,7 +466,6 @@ class ConferenceApi(remote.Service):
                     setattr(sf, field.name, str(getattr(session, field.name)))
                 # convert session typeOfSession string to Enum; 
                 elif field.name == 'typeOfSession':
-                    print getattr(session, field.name)
                     #setattr(sf, field.name, getattr(session, field.name))
                     setattr(sf, field.name, getattr(SessionType, getattr(session, field.name)))               
                 # just copy others                   
@@ -579,6 +585,17 @@ class ConferenceApi(remote.Service):
         # create Session & return (modified) SessionForm
         session = Session(**data)
         session.put()
+
+        # add a task to check if the speaker of this new session is
+        # now a featured speaker
+        if hasattr(session, 'speaker'):
+            print "adding task now to queue"
+            taskqueue.add(params={'websafeConferenceKey': request.websafeConferenceKey,
+                'websafeSpeakerKey': getattr(session, 'speaker').urlsafe()},
+                url='/tasks/check_featured_speaker'
+            )
+        else:
+            print "session has no speaker any more"
 
         return self._copySessionToForm(session)
 
@@ -979,13 +996,14 @@ class ConferenceApi(remote.Service):
         """Return Announcement from memcache."""
         return StringMessage(data=memcache.get(MEMCACHE_ANNOUNCEMENTS_KEY) or "")
 
-# - - - Query showcase - - - - - - - - - - - - - - - - - - -
+# - - - Query showcase (task 3)- - - - - - - - - - - - - - -
 
     ## task 3.2.1: list all topics covered by the conferences in the system
     # /topics, 'GET', getTopics()
     @endpoints.method(message_types.VoidMessage, TopicForms,
         path='topics', http_method='GET', name='getTopics')
     def getTopics(self, request):
+        """Return a list of all topics"""
         topics = set()
         confs = Conference.query()
         for conf in confs:
@@ -1001,6 +1019,7 @@ class ConferenceApi(remote.Service):
         path='/conferencesbytopic',
         http_method='POST', name='getConferencesByTopic')
     def getConferencesByTopic(self, request):
+        """Return all conferences on a given topic"""
         confs = Conference.query()
         confs = confs.filter(Conference.topics == request.topic)
 
@@ -1027,6 +1046,8 @@ class ConferenceApi(remote.Service):
         path='sessionquery/{websafeConferenceKey}',
         http_method='POST', name='getSessionsAfterExcluding')
     def getSessionsAfterExcluding(self, request):
+        """Return all session after the given time and not matching the
+        given session type."""
 
         # make time from string
         earliestTime = datetime.strptime(request.earliestTime[:5], "%H:%M").time()
@@ -1047,6 +1068,44 @@ class ConferenceApi(remote.Service):
         return SessionForms(items=[self._copySessionToForm(session) \
             for session in sessions]
         )
+
+# - - - Featured speaker (task 4)  - - - - - - - - - - - - -
+
+    @staticmethod
+    def _cacheFeaturedSpeaker(websafeConferenceKey, websafeSpeakerKey):
+        """Find featured speaker & assign to memcache; used by
+        getFeaturedSpeaker().
+        """
+        c_key = ndb.Key(urlsafe=websafeConferenceKey)
+        sp_key = ndb.Key(urlsafe=websafeSpeakerKey)
+        sessions = Session.query(ancestor=c_key)
+        sessions = sessions.filter(Session.speaker==sp_key)
+
+        if sessions.count() > 1:
+            # if there is more than one session for this
+            # speaker, format a featured speaker announcement
+            # and put it to memcache
+            # this will overwrite the last featured speaker
+            sessionNames = ", ".join([session.sessionName for session in sessions])
+            speaker = sp_key.get()
+            conf    = c_key.get()
+
+            announcement = FEATURED_SPEAKER_TPL % (
+                conf.name, speaker.name, sessionNames)
+
+            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, announcement)
+        else:
+            announcement = ""
+
+        return announcement
+
+
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+            path='featuredspeaker',
+            http_method='GET', name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        """Return Featured Speaker from memcache."""
+        return StringMessage(data=memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY) or "")
 
 
 # - - - API registration - - - - - - - - - - - - - - - - - -
