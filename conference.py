@@ -102,8 +102,7 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
 
 SESSION_POST_REQUEST = endpoints.ResourceContainer(
     SessionMiniForm,
-    websafeConferenceKey=messages.StringField(1)
-)
+    websafeConferenceKey=messages.StringField(1))
 
 SESSION_QUERY_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
@@ -113,6 +112,11 @@ SESSION_QUERY_REQUEST = endpoints.ResourceContainer(
 SESSION_QUERY_BY_TYPE_REQUEST = endpoints.ResourceContainer(
     SessionQueryByTypeForm,
     websafeConferenceKey=messages.StringField(1)
+)
+
+WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1)
 )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -448,8 +452,15 @@ class ConferenceApi(remote.Service):
                 # just copy others                   
                 else:
                     setattr(sf, field.name, getattr(session, field.name))
+
+        # show the session's own websafe key
+        setattr(sf, 'websafeKey', session.key.urlsafe())
+
+        # show the conference name
         conf = session.key.parent().get()
         setattr(sf, 'conferenceName', getattr(conf, 'name'))
+
+        # if the session has a speaker assigned, show their name and websafe key
         if hasattr(session, 'speaker'):
             sp_key = getattr(session, 'speaker')
             speaker = sp_key.get()
@@ -487,7 +498,7 @@ class ConferenceApi(remote.Service):
         # does the conference (still) exist?
         conf = c_key.get()
         if not conf:
-            raise endpoints.BadRequestException("Conference with this key does not exist")
+            raise endpoints.NotFoundException("Conference with this key does not exist")
 
         # only the conference organizer may add sessions, check
         if user_id != conf.organizerUserId:
@@ -530,7 +541,7 @@ class ConferenceApi(remote.Service):
             speakers = Speaker.query()
             speakers = speakers.filter(Speaker.name == request.speakerName)
             if speakers.count() == 0:
-                raise endpoints.BadRequestException(
+                raise endpoints.NotFoundException(
                     "No such speaker: %s" % request.speakerName)
             elif speakers.count() > 1:
                 raise endpoints.BadRequestException(
@@ -613,7 +624,7 @@ class ConferenceApi(remote.Service):
         # does the conference (still) exist?
         conf = c_key.get()
         if not conf:
-            raise endpoints.BadRequestException("Conference with this key does not exist")
+            raise endpoints.NotFoundException("Conference with this key does not exist")
 
         # create ancestor query for all key matches for this user
         sessions = Session.query(ancestor=c_key)
@@ -783,6 +794,84 @@ class ConferenceApi(remote.Service):
         """Unregister user for selected conference."""
         return self._conferenceRegistration(request, reg=False)
     ## end registration api methods
+
+# - - - Wishlist - - - - - - - - - - - - - - - - - - - - - -
+
+    ## wishlist helpers
+    def _wishlistToggle(self, request, add=True):
+        """Add or remove user session from user's wishlist."""
+        retval = False
+        prof = self._getProfileFromUser() # get user Profile
+
+        # check if session exists given websafeSessionKey
+        try:
+            wssk = request.websafeSessionKey
+            session = ndb.Key(urlsafe=wssk).get()
+        except Exception:
+            raise endpoints.BadRequestException(
+                'websafeSessionKey given is corrupted.')
+        
+        if not session:
+            raise endpoints.NotFoundException(
+                'No Session found with key: %s' % wsck)
+
+        # add to wishlist
+        if add:
+            # check if session already added otherwise add
+            if wssk in prof.sessionWishlist:
+                raise ConflictException(
+                    "You have already added this session to your wishlist")
+
+            # register user, take away one seat
+            prof.sessionWishlist.append(wssk)
+            retval = True
+
+        # remove from wishlist
+        else:
+            # is session in wishlist, remove
+            if wssk in prof.sessionWishlist:
+                prof.sessionWishlist.remove(wssk)
+                retval = True
+            else:
+                retval = False
+
+        # write things back to the datastore & return
+        prof.put()
+        return BooleanMessage(data=retval)
+    ## end wishlist helpers
+
+    ## wishlist api methods
+    # /wishlist/{websafeSessionKey}, POST, addSessionToWishlist()
+    @endpoints.method(WISHLIST_GET_REQUEST, BooleanMessage,
+            path='wishlist/{websafeSessionKey}',
+            http_method='POST', name='addSessionToWishlist')
+    def addSessionToWishlist(self, request):
+        """Add session to user's wishlist."""
+        return self._wishlistToggle(request)
+
+    # /wishlist/{websafeSessionKey}, DELETE, removeSessionFromWishlist()
+    @endpoints.method(WISHLIST_GET_REQUEST, BooleanMessage,
+            path='wishlist/{websafeSessionKey}',
+            http_method='DELETE', name='removeSessionFromWishlist')
+    def removeSessionFromWishlist(self, request):
+        """Remove session from user's wishlist."""
+        return self._wishlistToggle(request, add=False)
+
+    # /wishlist, GET, getWishlistSessions()
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+            path='wishlist',
+            http_method='GET', name='getWishlistSessions')
+    def getWishlistSessions(self, request):
+        """Return all sessions on user's wishlist"""
+        prof = self._getProfileFromUser() # get user Profile
+        session_keys = [ndb.Key(urlsafe=wssk) for wssk in prof.sessionWishlist]
+        sessions = ndb.get_multi(session_keys)
+
+        # return set of SessionForm objects
+        return SessionForms(items=[self._copySessionToForm(session) \
+            for session in sessions]
+        )
+    ## end wishlist api methods
 
 # - - - Search & filtering - - - - - - - - - - - - - - - - -
 
