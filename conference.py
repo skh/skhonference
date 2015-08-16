@@ -119,6 +119,10 @@ WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
     websafeSessionKey=messages.StringField(1)
 )
 
+CONF_WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1)
+)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 @endpoints.api( name='conference', version='v1', audiences=[ANDROID_AUDIENCE],
@@ -871,6 +875,30 @@ class ConferenceApi(remote.Service):
         return SessionForms(items=[self._copySessionToForm(session) \
             for session in sessions]
         )
+
+    # /wishlist, GET, getSessionsInWishlist()
+    @endpoints.method(CONF_WISHLIST_GET_REQUEST, SessionForms,
+        path='wishlist/{websafeConferenceKey}',
+        http_method='GET', name='getSessionsInWishlist')
+    def getSessionsInWishlist(self, request):
+        """Return all sessions on user's wishlist in a given conference"""
+        prof = self._getProfileFromUser() # get user Profile
+        # get real keys from urlsafe keys
+        wl_session_keys = [ndb.Key(urlsafe=wssk) for wssk in prof.sessionWishlist]
+
+        try:
+            sessions = Session.query(ancestor=ndb.Key(urlsafe=request.websafeConferenceKey))
+        except Exception:
+            raise endpoints.BadRequestException(
+                'websafeConferenceKey given is corrupt')
+
+        sessions = sessions.filter(Session.key.IN(wl_session_keys))
+
+        # return set of SessionForm objects
+        return SessionForms(items=[self._copySessionToForm(session) \
+            for session in sessions]
+        )
+
     ## end wishlist api methods
 
 # - - - Search & filtering - - - - - - - - - - - - - - - - -

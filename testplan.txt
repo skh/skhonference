@@ -34,3 +34,5 @@ MANUAL TESTPLAN for skhonference
 - add/remove session to wishlist with corrupt key (error)
 - add session to wishlist twice (error)
 - remove session from wishlist twice (error) 
+
+- show wishlist sessions in conference
