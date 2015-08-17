@@ -129,8 +129,8 @@ CONF_WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1)
 )
 
-SESSIONS_AFTER_EXCLUDING_POST_REQUEST = endpoints.ResourceContainer (
-    SessionQueryAfterExcludingForm,
+SESSIONS_BEFORE_EXCLUDING_POST_REQUEST = endpoints.ResourceContainer (
+    SessionQueryBeforeExcludingForm,
     websafeConferenceKey=messages.StringField(1)
 )
 
@@ -1042,19 +1042,19 @@ class ConferenceApi(remote.Service):
     ## task 3.3: list all sessions NOT matching the given type scheduled after
     ## the given time
     # /sessionquery/{websafeConferenceKey}, POST, getSessionsAfterExcluding()
-    @endpoints.method(SESSIONS_AFTER_EXCLUDING_POST_REQUEST, SessionForms,
+    @endpoints.method(SESSIONS_BEFORE_EXCLUDING_POST_REQUEST, SessionForms,
         path='sessionquery/{websafeConferenceKey}',
         http_method='POST', name='getSessionsAfterExcluding')
-    def getSessionsAfterExcluding(self, request):
+    def getSessionsBeforeExcluding(self, request):
         """Return all session after the given time and not matching the
         given session type."""
 
         # make time from string
-        earliestTime = datetime.strptime(request.earliestTime[:5], "%H:%M").time()
+        earliestTime = datetime.strptime(request.latestTime[:5], "%H:%M").time()
 
-        # query 1: all sessions in conference after earliestTime
+        # query 1: all sessions in conference after latestTime
         sessions = Session.query()
-        rightTimeSessions = sessions.filter(Session.startTime >= earliestTime)
+        rightTimeSessions = sessions.filter(Session.startTime <= latestTime)
 
         # query 2: all sessions in conference not of type typeOfSession
         rightTypeSessions = sessions.filter(

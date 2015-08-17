@@ -179,7 +179,7 @@ class SessionQueryByTypeForm(messages.Message):
     """SessionQueryByTypeForm -- Session query inbound form"""
     typeOfSession = messages.EnumField('SessionType', 1)
 
-class SessionQueryAfterExcludingForm(messages.Message):
+class SessionQueryBeforeExcludingForm(messages.Message):
     """SessionQueryAfterExcludingForm -- Session query inbound form"""
     earliestTime = messages.StringField(1)
     typeOfSession = messages.EnumField('SessionType', 2)
