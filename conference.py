@@ -476,8 +476,11 @@ class ConferenceApi(remote.Service):
         setattr(sf, 'websafeKey', session.key.urlsafe())
 
         # show the conference name
-        conf = session.key.parent().get()
-        setattr(sf, 'conferenceName', getattr(conf, 'name'))
+        if session.key and session.key.parent():
+            conf = session.key.parent().get()
+            setattr(sf, 'conferenceName', getattr(conf, 'name'))
+        else:
+            setattr(sf, 'conferenceName', 'not set')
 
         # if the session has a speaker assigned, show their name and websafe key
         if hasattr(session, 'speaker'):
@@ -1050,7 +1053,7 @@ class ConferenceApi(remote.Service):
         given session type."""
 
         # make time from string
-        earliestTime = datetime.strptime(request.latestTime[:5], "%H:%M").time()
+        latestTime = datetime.strptime(request.latestTime[:5], "%H:%M").time()
 
         # query 1: all sessions in conference after latestTime
         sessions = Session.query()
