@@ -42,7 +42,7 @@ from models import SessionMiniForm
 from models import SessionForms
 from models import SessionQueryByTypeForm
 from models import SessionQueryBySpeakerForm
-from models import SessionQueryAfterExcludingForm
+from models import SessionQueryBeforeExcludingForm
 from models import SessionType
 from models import Speaker
 from models import SpeakerForm
@@ -686,7 +686,7 @@ class ConferenceApi(remote.Service):
     def getSessionsBySpeaker(self, request):
         """Return all sessions by the specified speaker in all conferences"""
         sessions = Session.query()
-        sessions = sessions.filter(Session.speaker == getattr(request, 'speaker'))
+        sessions = sessions.filter(Session.speaker == ndb.Key(urlsafe=getattr(request, 'speaker')))
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -1099,7 +1099,7 @@ class ConferenceApi(remote.Service):
 
         return announcement
 
-
+    # /featuredspeaker, GET, getFeaturedSpeaker()
     @endpoints.method(message_types.VoidMessage, StringMessage,
             path='featuredspeaker',
             http_method='GET', name='getFeaturedSpeaker')

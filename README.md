@@ -134,7 +134,7 @@ For this task I have chosen the first solution and implemented it in the followi
 
 The query gets the websafe key for the conference as an URL parameter, and the session type to exclude as well as the cut-off time as POST parameters. I have create the form
 
-- SessionQueryAfterExcludingForm
+- SessionQueryBeforeExcludingForm
 
 and the ResourceContainer
 
