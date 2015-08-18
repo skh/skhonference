@@ -119,7 +119,7 @@ SESSION_QUERY_BY_TYPE_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1)
 )
 
-WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
+WISHLIST_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeSessionKey=messages.StringField(1)
 )
@@ -874,7 +874,7 @@ class ConferenceApi(remote.Service):
 
     ## wishlist api methods
     # /wishlist/{websafeSessionKey}, POST, addSessionToWishlist()
-    @endpoints.method(WISHLIST_GET_REQUEST, BooleanMessage,
+    @endpoints.method(WISHLIST_REQUEST, BooleanMessage,
             path='wishlist/{websafeSessionKey}',
             http_method='POST', name='addSessionToWishlist')
     def addSessionToWishlist(self, request):
@@ -882,7 +882,7 @@ class ConferenceApi(remote.Service):
         return self._wishlistToggle(request)
 
     # /wishlist/{websafeSessionKey}, DELETE, removeSessionFromWishlist()
-    @endpoints.method(WISHLIST_GET_REQUEST, BooleanMessage,
+    @endpoints.method(WISHLIST_REQUEST, BooleanMessage,
             path='wishlist/{websafeSessionKey}',
             http_method='DELETE', name='removeSessionFromWishlist')
     def removeSessionFromWishlist(self, request):
@@ -1041,10 +1041,10 @@ class ConferenceApi(remote.Service):
 
     ## task 3.3: list all sessions NOT matching the given type scheduled after
     ## the given time
-    # /sessionquery/{websafeConferenceKey}, POST, getSessionsAfterExcluding()
+    # /sessionquery/{websafeConferenceKey}, POST, getSessionsBeforeExcluding()
     @endpoints.method(SESSIONS_BEFORE_EXCLUDING_POST_REQUEST, SessionForms,
         path='sessionquery/{websafeConferenceKey}',
-        http_method='POST', name='getSessionsAfterExcluding')
+        http_method='POST', name='getSessionsBeforeExcluding')
     def getSessionsBeforeExcluding(self, request):
         """Return all session after the given time and not matching the
         given session type."""
