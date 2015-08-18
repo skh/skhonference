@@ -588,7 +588,7 @@ class ConferenceApi(remote.Service):
 
         # add a task to check if the speaker of this new session is
         # now a featured speaker
-        if hasattr(session, 'speaker'):
+        if hasattr(session, 'speaker') and getattr(session, 'speaker'):
             print "adding task now to queue"
             taskqueue.add(params={'websafeConferenceKey': request.websafeConferenceKey,
                 'websafeSpeakerKey': getattr(session, 'speaker').urlsafe()},
