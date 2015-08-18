@@ -143,6 +143,33 @@ and the ResourceContainer
 as supporting data structures for this query.
 
 
+Task 4: Add a task
+
+After a session has been created which has a speaker assigned to it, a task is put into the push queue to check if this speaker has now more than one session in this conference. If yes, they are now considered a "featured speaker". This information is put into Memcache and may be retrieved with the API method getFeaturedSpeaker().
+
+Any subsequent run of this task which finds a speaker with two or more talks will overwrite the previous featured speaker in Memcache.
+
+Changed files:
+
+app.yaml: 
+The task has been defined in app.yaml with the path /tasks/check_featured_speaker.
+
+conference.py: 
+This task is put into the push queue from the private method _createSessionObject(), which is called by the API method createSession().
+
+main.py: 
+The path of this task has been registered with the app object in main.py and connected to the request handler CheckFeaturedSpeakerHandler.
+
+conference.py:
+This request handler calls the private method _cacheFeaturedSpeaker() and passes it the websafe keys of the speaker and conference in question.
+
+_cacheFeaturedSpeaker() checks if this speaker should be featured, and writes the announcement to Memcache if yes.
+
+The API method 
+
+- /featuredspeaker, GET, getFeaturedSpeaker()
+
+has been implement to retrieve this information from Memcache. This method would be called by a UI to display the information.
 
 
 
