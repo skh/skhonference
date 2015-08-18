@@ -1,51 +1,127 @@
 MANUAL TESTPLAN for skhonference
 
-- create 3 conference
-- list conferences, copy out two websafe keys
+1. Create basic test data
 
-- create 3 speakers, 2 of them with the same name, copy out one websafe key
+Delete all entities in google's developer console
 
+createConference()
+- create two conferences
+ 
+queryConferences()
+- list conferences, copy out the websafe keys
+
+2. Test task 1 features 
+
+Speakers were implemented as a separate entity.
+
+createSpeaker()
+- create 3 speakers, 2 of them with the same name, copy out one 
+  websafe key
+
+createSession()
 - add session to conference with speaker by name
 - add session to conference with speaker by ambiguous name (error)
 - add session to conference with nonexisting speaker name (error)
 - add session to conference with nonexisting speaker key (error)
-- add session to conference with corrupt conference key
+- add session to conference with corrupt conference key (error)
 - add session to conference with speaker by key
+- add session(s) to the other conference
 
-- add session to other conference
-- list sessions by conference
-- list sessions by speaker
+getConferenceSessions()
+- list sessions by conference (should only show sessions in the given conference)
 
+getSessionsBySpeaker()
+- list sessions by speaker (should show sessions in both conferences)
+
+createSession()
 - add sessions of types TUTORIAL, WORKSHOP, and LECTURE
 
+getConferenceSessionsByType()
 - list sessions by conference and type
 
-- create conference with max attendance set
-- register for conference
-- list conferences, observe seats available
-- unregister from conference
-- list conferences, observe seats available
+3. Test task 2 features
 
-- list sessions by speaker, note websafe keys
+getSessionsBySpeaker()
+- list sessions by speaker, copy out websafe keys
+
+addSessionToWishlist()
 - add session to wishlist
-- show wishlist
-- remove session from wishlist
-- show wishlist
-- add/remove session to wishlist with corrupt key (error)
+- add session to wishlist with corrupt key (error)
 - add session to wishlist twice (error)
-- remove session from wishlist twice (error) 
 
+getWishlistSessions()
+- show wishlist
+
+removeSessionFromWishlist()
+- remove session from wishlist
+- remove session to wishlist with corrupt key (error)
+- remove session from wishlist twice (error)
+
+getWishlistSessions()
+- show wishlist
+
+addSessionToWishlist()
+- add sessions from two different conferences to wishlist
+ 
+getSessionsInWishlist()
 - show wishlist sessions in conference
 
-- create workshop before 19:00:00
-- create workshop after 19:00:00
-- create lecture before 19:00:00
-- create lecture after 19:00:00
+4. Test task 3 features
 
-- test getSessionsAfterExcluding()
-
+createConference()
 - make up two topics (e.g. 'Python' and 'Google App Engine')
 - create two conferences with topic 1, and one with topic 2
 
+getTopics()
 - test getTopics(), should list two topics
+
+getConferencesByTopic()
 - test getConferencesByTopic()
+
+createSession()
+- create session of type WORKSHOP before 19:00:00
+- create session of type WORKSHOP after 19:00:00
+- create session of type LECTURE before 19:00:00
+- create session of type LECTURE after 19:00:00
+
+- test getSessionsBeforeExcluding()
+
+5. Test task 4 features
+
+createConference()
+- create a conference, note websafe key
+
+createSpeaker()
+- create a speaker, note websafe key or name
+
+createSession()
+- create two sessions with speaker in conference
+
+- check console for task logs and memcache entry
+
+getFeaturedSpeaker()
+- check with getFeaturedSpeaker() for memcache entry
+
+
+6. Test other functionality that was implemented during the course:
+
+createConference()
+- create conference with max attendance set
+
+getConferencesCreated()
+- see if created conference is in list
+
+registerForConference()
+- register for conference
+
+queryConferences()
+- list conferences, observe seats available
+
+getConferencesToAttend()
+- see if registered-to conference is in list
+
+unregisterFromConference()
+- unregister from conference
+
+queryConferences()
+- list conferences, observe seats available
