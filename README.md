@@ -14,17 +14,37 @@ I have documented my test cases in textplan.txt
 
 Task 1: Add Sessions to a Conference
 
-I have modeled speakers as separate entities with the fields
+I have modeled speakers as separate entities with the fields and types
 
-- name
-- bio (optional)
+- name (StringProperty)
+- bio (optional, TextProperty)
+
+The field 'name' is modelled as StringProperty, which has a length limit of 1500 bytes but is indexable, as names are typically rather short, and need to be indexed. 
+
+Biographies can be longer than 1500 bytes, so I use a TextProperty for the field 'bio' which supports the size of the data. This also means that biographies are in not indexed.
 
 Speakers do not have ancestors.
 Speaker names do not need to be unique - names in real life are not unique, either.
 
+I have modeled sessions with the following fields and types
+
+- sessionName (StringProperty)
+- highlights (StringProperty)
+- speaker (KeyProperty)
+- duration (IntegerProperty)
+- typeOfSession (StringProperty)
+- date (DateProperty)
+- startTime (TimeProperty)
+
+I want to have both 'sessionName' and 'highlights' indexed and therefore use StringProperty. The length limit of 1500 bytes is acceptable.
+
+'speaker' refers to a Speaker entity. For this relationship, the NDB data store offers the property type KeyProperty, which can be given the kind of the entity the field is referring to. In this case, 'kind' equals 'Speaker'.
+
 When creating sessions, the speaker can be given by name or websafe key. If the speaker name is given, but two speakers of this name exist, an error is returned and the websafe key must be used.
 
-The value of the field 'typeOfSession' is restricted to the values defined in the Enum 'sessionType':
+'duration' contains the reserved for the session. The unit has not been given in the specification, I would recomment to use minutes (and maybe even rename the field to durationInMinutes for implicit documentation).
+
+'typeOfSession' is a StringProperty, and its value is restricted to the values defined in the Enum 'sessionType':
 
 - WORKSHOP
 - LECTURE
@@ -33,6 +53,8 @@ The value of the field 'typeOfSession' is restricted to the values defined in th
 - UNSPECIFIED
 
 Default is 'UNSPECIFIED'.
+
+The specification explicitly asks for two time-related properties, 'date' and 'startTime'. As one only contains the date and one only the time, I have used DateProperty and TimeProperty for them, respectively. It would have been possible to combine these properties into one and use the property type DateTimeProperty. However, having the start time on its own in a separate property makes some queries much easier, e.g. requesting all sessions starting before a certain time. 
 
 When a Session is created, the Conference is set as its ancestor. This relationship is used in the query getConferenceSessions().
 
