@@ -42,7 +42,7 @@ I want to have both 'sessionName' and 'highlights' indexed and therefore use Str
 
 When creating sessions, the speaker can be given by name or websafe key. If the speaker name is given, but two speakers of this name exist, an error is returned and the websafe key must be used.
 
-'duration' contains the reserved for the session. The unit has not been given in the specification, I would recomment to use minutes (and maybe even rename the field to durationInMinutes for implicit documentation).
+'duration' contains the reserved for the session. The unit has not been given in the specification, I would recommend to use minutes (and maybe even rename the field to durationInMinutes for implicit documentation).
 
 'typeOfSession' is a StringProperty, and its value is restricted to the values defined in the Enum 'sessionType':
 
